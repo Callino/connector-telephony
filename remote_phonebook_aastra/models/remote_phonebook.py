@@ -225,7 +225,7 @@ class remote_phonebook(models.Model):
     def _get_content(self):
         if self.type == 'aastra':
             _logger.info("do return content for type aastra")
-            return self._get_content_aastra('all')
+            # return self._get_content_aastra('all')
         return super(remote_phonebook, self)._get_content()
 
     def _get_url(self):

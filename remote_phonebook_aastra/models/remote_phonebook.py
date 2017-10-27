@@ -87,8 +87,12 @@ class remote_phonebook(models.Model):
             name = ET.SubElement(entry, 'Prompt')
             name.text = letter
             uri = ET.SubElement(entry, 'URI')
-            uri.text = self.env['ir.config_parameter'].get_param(
-                'web.base.url') + "/aastra/phonebook/partners/%s/?%s" % (type, urllib.urlencode({'ids': str(partners)}))
+            if type == 'supplier':
+                uri.text = self.env['ir.config_parameter'].get_param(
+                    'web.base.url') + "/aastra/phonebook/supplier/?%s" % urllib.urlencode({'id': str(partners)})
+            else:
+                uri.text = self.env['ir.config_parameter'].get_param(
+                    'web.base.url') + "/aastra/phonebook/partners/%s/?%s" % (type, urllib.urlencode({'ids': str(partners)}))
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model

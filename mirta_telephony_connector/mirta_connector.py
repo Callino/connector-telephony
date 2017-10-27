@@ -74,7 +74,13 @@ class PhoneCommon(models.AbstractModel):
                 _('Missing Mirta Base URL on company %s') % user.company_id.name)
 
         called_number = self.convert_to_dial_number(erp_number)
-        url = "%sproxyapi.php?reqtype=DIAL&tenant=%s&key=%s&source=%s&dest=%s" % (user.company_id.mirta_url, user.company_id.mirta_tenant, user.company_id.mirta_key, user.mirta_extension, called_number)
+        url = "%sproxyapi.php?reqtype=DIAL&tenant=%s&key=%s&source=%s&dest=%s&destclid=%s" % \
+              (user.company_id.mirta_url,
+               user.company_id.mirta_tenant,
+               user.company_id.mirta_key,
+               user.mirta_extension,
+               called_number,
+               user.mirta_callerid)
         result = urllib2.urlopen(url, None, 5)
         _logger.info("Click2dial URL: %s", url)
         _logger.info("Result: %r", result)

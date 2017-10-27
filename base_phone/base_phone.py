@@ -146,6 +146,11 @@ class PhoneCommon(models.AbstractModel):
                 u"Number '%s' should be a 'str' or 'unicode' but it is a '%s'"
                 % (presented_number, type(presented_number)))
             return False
+        if len(presented_number) < 5:
+            _logger.warning(
+                u"Number '%s' is too short"
+                % (presented_number))
+            return False
         if not presented_number.isdigit():
             _logger.warning(
                 u"Number '%s' should only contain digits." % presented_number)

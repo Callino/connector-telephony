@@ -41,15 +41,20 @@ class AastraPhonebook(http.Controller):
                                               headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/partners', auth='public')
+    @http.route('/aastra/phonebook/partners/<type>', auth='public')
     def get_phonebook_by_ids(self, **kw):
         if 'ids' not in kw:
             return "Invalid IDs"
+        if 'type' not in kw:
+            return "Invalid Type"
         else:
             partner_list = urllib.unquote(kw['ids'].strip('[],').replace(",", "")).decode('utf8').split()
             cleaned_partner_list = map(int, partner_list)
             partners = http.request.env['res.partner'].sudo().browse(cleaned_partner_list)
-            content = http.request.env['remote.phonebook'].get_content_for_partners(partners)
+            if kw['type'] == 'supplier':
+                content = http.request.env['remote.phonebook'].get_content_for_partners(partners)
+            else:
+                content = http.request.env['remote.phonebook'].get_content_for_supplier(partners)
             response = http.request.make_response(
                 content,
                 headers=[('Content-Type', 'text/xml')])
@@ -82,9 +87,9 @@ class AastraPhonebook(http.Controller):
         _logger.debug("got %r", kw)
         rpb = rpb_obj.sudo().search([('tokken', '=', kw['tokken'])])
         _logger.debug("got %r", rpb)
-        if len(rpb) != 1:
-            return "Tokken not registered"
-        _logger.debug("Content: %r", rpb.content)
+        # if len(rpb) != 1:
+        #     return "Tokken not registered"
+        # _logger.debug("Content: %r", rpb.content)
 
         response = http.request.make_response(rpb._get_content_aastra(kw['type']), headers=[('Content-Type', 'text/xml')])
         return response

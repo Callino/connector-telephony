@@ -88,7 +88,7 @@ class remote_phonebook(models.Model):
             name.text = letter
             uri = ET.SubElement(entry, 'URI')
             uri.text = self.env['ir.config_parameter'].get_param(
-                'web.base.url') + "/aastra/phonebook/partners?%s" % urllib.urlencode({'ids': str(partners)})
+                'web.base.url') + "/aastra/phonebook/partners/%s/?%s" % (type, urllib.urlencode({'ids': str(partners)}))
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model

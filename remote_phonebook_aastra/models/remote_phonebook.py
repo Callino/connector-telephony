@@ -3,8 +3,10 @@ import logging
 # import xml.etree.ElementTree as ET
 from lxml import etree as ET
 import urllib
+import collections
 
 _logger = logging.getLogger(__name__)
+
 
 class remote_phonebook(models.Model):
     _inherit = 'remote.phonebook'
@@ -72,46 +74,87 @@ class remote_phonebook(models.Model):
             name = ET.SubElement(entry, 'Prompt')
             name.text = partner.name
             uri = ET.SubElement(entry, 'URI')
-            uri.text = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/supplier?%s" % urllib.urlencode({'id': str(partner.id)})
+            uri.text = self.env['ir.config_parameter'].get_param(
+                'web.base.url') + "/aastra/phonebook/supplier?%s" % urllib.urlencode({'id': str(partner.id)})
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
     def letter_screen(self, partner_dict, type):
         cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
         root = self._get_AastraIPPhoneTextMenu_root(cancel_action=cancel_action)
-        for letter, partners in partner_dict[0].iteritems():
+        for letter, partners in collections.OrderedDict(sorted(partner_dict.items(), key=lambda t: t[0])).iteritems():
             entry = ET.SubElement(root, 'MenuItem')
             name = ET.SubElement(entry, 'Prompt')
             name.text = letter
             uri = ET.SubElement(entry, 'URI')
-            uri.text = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/partners?%s" % urllib.urlencode({'ids': str(partners)})
+            uri.text = self.env['ir.config_parameter'].get_param(
+                'web.base.url') + "/aastra/phonebook/partners?%s" % urllib.urlencode({'ids': str(partners)})
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
     def get_content_aastra_supplier(self):
-        partners = self._get_sellers()
-        if len(partners) > 25:
-            split_partners = self.split_partners(partners)
+        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
+        split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
+        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
+        self._cr.execute(count_sql)
+        count_result = self._cr.fetchall()[0]
+        if count_result > 25:
+            split_partners = {}
+            self._cr.execute(split_sql)
+            split_result = self._cr.fetchall()
+            for line in split_result:
+                split_partners[line[0]] = []
+            self._cr.execute(ids_sql)
+            ids_result = self._cr.fetchall()
+            for line in ids_result:
+                split_partners[line[1]].append(line[0])
             return self.letter_screen(split_partners, "supplier")
         else:
+            partners = self._get_sellers()
             return self._get_default_phone_list_supplier(partners)
 
     @api.model
     def get_content_aastra_customers(self):
-        partners = self._get_customers()
-        if len(partners) > 25:
-            split_partners = self.split_partners(partners)
+        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
+        split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
+        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
+        self._cr.execute(count_sql)
+        count_result = self._cr.fetchall()[0]
+        if count_result > 25:
+            split_partners = {}
+            self._cr.execute(split_sql)
+            split_result = self._cr.fetchall()
+            for line in split_result:
+                split_partners[line[0]] = []
+            self._cr.execute(ids_sql)
+            ids_result = self._cr.fetchall()
+            for line in ids_result:
+                split_partners[line[1]].append(line[0])
             return self.letter_screen(split_partners, "customers")
         else:
+            partners = self._get_customers()
             return self._get_default_phone_list_customer(partners)
 
     @api.model
     def get_content_aastra_all(self):
-        partners = self._get_partners()
-        if len(partners) > 25:
-            split_partners = self.split_partners(partners)
+        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
+        split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
+        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
+        self._cr.execute(count_sql)
+        count_result = self._cr.fetchall()[0]
+        if count_result > 25:
+            split_partners = {}
+            self._cr.execute(split_sql)
+            split_result = self._cr.fetchall()
+            for line in split_result:
+                split_partners[line[0]] = []
+            self._cr.execute(ids_sql)
+            ids_result = self._cr.fetchall()
+            for line in ids_result:
+                split_partners[line[1]].append(line[0])
             return self.letter_screen(split_partners, "all")
         else:
+            partners = self._get_partners()
             return self._get_default_phone_list(partners)
 
     @api.model
@@ -154,7 +197,6 @@ class remote_phonebook(models.Model):
                         dial = ET.SubElement(entry, 'Dial')
                         dial.text = sub_partner.mobile
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
-
 
     @api.model
     def get_content_for_partners(self, partners):

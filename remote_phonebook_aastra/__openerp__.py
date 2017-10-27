@@ -29,6 +29,6 @@
     'demo': [
     ],
     "external_dependencies": {
-        'python': ['sipxmldevices']
+        'python': []
     },
 }

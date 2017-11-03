@@ -20,24 +20,25 @@
 #
 ##############################################################################
 
+from openerp import http
+from openerp import SUPERUSER_ID
+import logging
 
-{
-    'name': 'Mirta Telephony Connector',
-    'version': '8.0.0.1.0',
-    'category': 'Phone',
-    'license': 'AGPL-3',
-    'summary': 'Mirta-Odoo telephony connector (click2call)',
-    'author': 'Callino',
-    'website': 'http://www.callino.at/',
-    'depends': ['base_phone', 'project_issue'],
-    'external_dependencies': {'python': ['phonenumbers']},
-    'data': [
-        'views/res_users_view.xml',
-        'views/res_company_view.xml',
-        'views/project.xml',
-    ],
-    'demo': [],
-    'qweb': ['static/src/xml/*.xml'],
-    'application': True,
-    'installable': True,
-}
+
+_logger = logging.getLogger(__name__)
+
+
+class ClidLookup(http.Controller):
+
+    @http.route('/clid/lookup/<clid>', auth='public')
+    def lookup(self, clid, **kw):
+        _logger.debug("got %r", clid)
+        phone_obj = http.request.registry.get('phone.common')
+        entrie = phone_obj.get_record_from_phone_number(http.request.cr, SUPERUSER_ID, clid)
+        if not entrie:
+            return "Unbekannt"
+        src_obj = http.request.registry.get(entrie[0])
+        src_ins = src_obj.browse(http.request.cr, SUPERUSER_ID, entrie[1])
+        if not src_ins:
+            return "Unbekannt"
+        return src_ins.display_name

@@ -20,24 +20,5 @@
 #
 ##############################################################################
 
-
-{
-    'name': 'Mirta Telephony Connector',
-    'version': '8.0.0.1.0',
-    'category': 'Phone',
-    'license': 'AGPL-3',
-    'summary': 'Mirta-Odoo telephony connector (click2call)',
-    'author': 'Callino',
-    'website': 'http://www.callino.at/',
-    'depends': ['base_phone', 'project_issue'],
-    'external_dependencies': {'python': ['phonenumbers']},
-    'data': [
-        'views/res_users_view.xml',
-        'views/res_company_view.xml',
-        'views/project.xml',
-    ],
-    'demo': [],
-    'qweb': ['static/src/xml/*.xml'],
-    'application': True,
-    'installable': True,
-}
+from . import mirta_connector
+from . import base_inherits

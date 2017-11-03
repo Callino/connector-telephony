@@ -20,24 +20,15 @@
 #
 ##############################################################################
 
+from openerp import models, fields, api
 
-{
-    'name': 'Mirta Telephony Connector',
-    'version': '8.0.0.1.0',
-    'category': 'Phone',
-    'license': 'AGPL-3',
-    'summary': 'Mirta-Odoo telephony connector (click2call)',
-    'author': 'Callino',
-    'website': 'http://www.callino.at/',
-    'depends': ['base_phone', 'project_issue'],
-    'external_dependencies': {'python': ['phonenumbers']},
-    'data': [
-        'views/res_users_view.xml',
-        'views/res_company_view.xml',
-        'views/project.xml',
-    ],
-    'demo': [],
-    'qweb': ['static/src/xml/*.xml'],
-    'application': True,
-    'installable': True,
-}
+class crm_phonecall(models.Model):
+     _inherit = 'crm.phonecall'
+
+     uniqueid = fields.Char(size=64, string="UniqueID")
+     issue_id = fields.Many2one('project.issue', String="Issue")
+
+class project_issue(models.Model):
+     _inherit = 'project.issue'
+
+     calls = fields.One2many('crm.phonecall', 'issue_id', string="UniqueID")

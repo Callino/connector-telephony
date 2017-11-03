@@ -1,0 +1,16 @@
+<openerp>
+    <data>
+        <record id="view_issue_calls" model="ir.ui.view">
+          <field name="name">view.issue.calls.form</field>
+          <field name="model">project.issue</field>
+          <field name="inherit_id" ref="project_issue.project_issue_form_view"/>
+          <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Rufe">
+                        <field name="calls"/>
+                    </page>
+                </xpath>
+          </field>
+        </record>
+    </data>
+</openerp>

@@ -1,8 +1,9 @@
+# -*- encoding: utf-8 -*-
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    OVH Connector module for Odoo
-#    Copyright (C) 2015 Alexis de Lattre <alexis@via.ecp.fr>
+#    Mirta PBX Connector module for Odoo
+#    Copyright (C) 2017 Pichler Wolfgang <wpichler@callino.at>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -19,4 +20,5 @@
 #
 ##############################################################################
 
-from . import mirta_connector
+import models
+import controller

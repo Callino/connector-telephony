@@ -38,9 +38,9 @@ class remote_phonebook(models.Model):
             raise ValueError("Unknown Type: %r" % type)
 
     @api.model
-    def _get_default_phone_list(self, partners):
-        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
-        root = self._get_AastraIPPhoneTextMenu_root(cancel_action=cancel_action)
+    def _get_default_phone_list(self, partners, tokken, type="all"):
+        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % tokken
+        root = self._get_AastraIPPhoneTextMenu_root(tokken, type, cancel_action=cancel_action)
         # create simple entries to call contacts
         for partner in partners:
             if partner.phone:
@@ -62,26 +62,26 @@ class remote_phonebook(models.Model):
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
-    def _get_default_phone_list_customer(self, partners):
-        return self._get_default_phone_list(partners)
+    def _get_default_phone_list_customer(self, partners, tokken):
+        return self._get_default_phone_list(partners, tokken, type="customer")
 
     @api.model
-    def _get_default_phone_list_supplier(self, partners):
-        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
-        root = self._get_AastraIPPhoneTextMenu_root(cancel_action=cancel_action)
+    def _get_default_phone_list_supplier(self, partners, tokken):
+        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % tokken
+        root = self._get_AastraIPPhoneTextMenu_root(tokken, "supplier", cancel_action=cancel_action)
         for partner in partners:
             entry = ET.SubElement(root, 'MenuItem')
             name = ET.SubElement(entry, 'Prompt')
             name.text = partner.name
             uri = ET.SubElement(entry, 'URI')
             uri.text = self.env['ir.config_parameter'].get_param(
-                'web.base.url') + "/aastra/phonebook/supplier?%s" % urllib.urlencode({'id': str(partner.id)})
+                'web.base.url') + "/aastra/phonebook/%s/suppliers?%s" % (tokken, urllib.urlencode({'ids': str(partner.id)}))
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
-    def letter_screen(self, partner_dict, type):
-        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
-        root = self._get_AastraIPPhoneTextMenu_root(cancel_action=cancel_action)
+    def letter_screen(self, partner_dict, type, tokken):
+        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % tokken
+        root = self._get_AastraIPPhoneTextMenu_root(tokken, type, cancel_action=cancel_action)
         for letter, partners in collections.OrderedDict(sorted(partner_dict.items(), key=lambda t: t[0])).iteritems():
             entry = ET.SubElement(root, 'MenuItem')
             name = ET.SubElement(entry, 'Prompt')
@@ -89,10 +89,10 @@ class remote_phonebook(models.Model):
             uri = ET.SubElement(entry, 'URI')
             if type == 'supplier':
                 uri.text = self.env['ir.config_parameter'].get_param(
-                    'web.base.url') + "/aastra/phonebook/supplier/?%s" % urllib.urlencode({'id': str(partners)})
+                    'web.base.url') + "/aastra/phonebook/%s/suppliers/?%s" % (tokken, urllib.urlencode({'ids': str(partners)}))
             else:
                 uri.text = self.env['ir.config_parameter'].get_param(
-                    'web.base.url') + "/aastra/phonebook/partners/%s/?%s" % (type, urllib.urlencode({'ids': str(partners)}))
+                    'web.base.url') + "/aastra/phonebook/%s/partners/%s/?%s" % (tokken, type, urllib.urlencode({'ids': str(partners)}))
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
@@ -112,7 +112,7 @@ class remote_phonebook(models.Model):
             ids_result = self._cr.fetchall()
             for line in ids_result:
                 split_partners[line[1]].append(line[0])
-            return self.letter_screen(split_partners, "supplier")
+            return self.letter_screen(split_partners, "supplier", self.tokken)
         else:
             partners = self._get_sellers()
             return self._get_default_phone_list_supplier(partners)
@@ -134,7 +134,7 @@ class remote_phonebook(models.Model):
             ids_result = self._cr.fetchall()
             for line in ids_result:
                 split_partners[line[1]].append(line[0])
-            return self.letter_screen(split_partners, "customers")
+            return self.letter_screen(split_partners, "customers", self.tokken)
         else:
             partners = self._get_customers()
             return self._get_default_phone_list_customer(partners)
@@ -156,15 +156,15 @@ class remote_phonebook(models.Model):
             ids_result = self._cr.fetchall()
             for line in ids_result:
                 split_partners[line[1]].append(line[0])
-            return self.letter_screen(split_partners, "all")
+            return self.letter_screen(split_partners, "all", self.tokken)
         else:
             partners = self._get_partners()
             return self._get_default_phone_list(partners)
 
     @api.model
-    def get_content_for_supplier(self, partners):
-        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/supplier/test"
-        root = self._get_AastraIPPhoneTextMenu_root(cancel_action=cancel_action)
+    def get_content_for_supplier(self, partners, tokken):
+        cancel_action = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/supplier" % tokken
+        root = self._get_AastraIPPhoneTextMenu_root(tokken, "supplier", cancel_action=cancel_action)
         for partner in partners:
             if partner.phone:
                 entry = ET.SubElement(root, 'MenuItem')
@@ -203,11 +203,11 @@ class remote_phonebook(models.Model):
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
-    def get_content_for_partners(self, partners):
-        return self._get_default_phone_list(partners)
+    def get_content_for_partners(self, partners, tokken):
+        return self._get_default_phone_list(partners, tokken)
 
     @api.model
-    def _get_AastraIPPhoneTextMenu_root(self, name="Telefonbuch", cancel_action=None):
+    def _get_AastraIPPhoneTextMenu_root(self, tokken, type, name="Telefonbuch", cancel_action=None):
         root = ET.Element('AastraIPPhoneTextMenu')
         if cancel_action:
             root.set('cancelAction', cancel_action)
@@ -217,13 +217,13 @@ class remote_phonebook(models.Model):
         name = ET.SubElement(new, 'Prompt')
         name.text = "Neuer Eintrag"
         uri = ET.SubElement(new, 'URI')
-        uri.text = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/new_entry/1" % type
+        uri.text = self.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/new_entry/1" % (tokken, type)
         new = ET.SubElement(root, 'MenuItem')
         name = ET.SubElement(new, 'Prompt')
         name.text = "Suche"
         uri = ET.SubElement(new, 'URI')
         uri.text = self.env['ir.config_parameter'].get_param(
-            'web.base.url') + "/aastra/phonebook/%s/search_screen" % type
+            'web.base.url') + "/aastra/phonebook/%s/%s/search_screen" % (tokken, type)
         return root
 
     def _get_content(self):

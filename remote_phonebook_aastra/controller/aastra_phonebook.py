@@ -25,56 +25,60 @@ class AastraPhonebook(http.Controller):
         name = ET.SubElement(new, 'Prompt')
         name.text = "Lieferanten"
         uri = ET.SubElement(new, 'URI')
-        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/supplier/%s" % kw['tokken']
+        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/supplier" % kw['tokken']
         new = ET.SubElement(root, 'MenuItem')
         name = ET.SubElement(new, 'Prompt')
         name.text = "Kunden"
         uri = ET.SubElement(new, 'URI')
-        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/customers/%s" % kw['tokken']
+        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/customers" % kw['tokken']
         new = ET.SubElement(root, 'MenuItem')
         name = ET.SubElement(new, 'Prompt')
         name.text = "Alle"
         uri = ET.SubElement(new, 'URI')
-        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/all/%s" % kw['tokken']
+        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/all" % kw['tokken']
 
         response = http.request.make_response(ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes"),
                                               headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/partners/<type>', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/partners/<type>', auth='public')
     def get_phonebook_by_ids(self, **kw):
         if 'ids' not in kw:
             return "Invalid IDs"
         if 'type' not in kw:
             return "Invalid Type"
+        if 'tokken' not in kw:
+            return "invalid tokken"
         else:
             partner_list = urllib.unquote(kw['ids'].strip('[],').replace(",", "")).decode('utf8').split()
             cleaned_partner_list = map(int, partner_list)
             partners = http.request.env['res.partner'].sudo().browse(cleaned_partner_list)
             if kw['type'] == 'supplier':
-                content = http.request.env['remote.phonebook'].get_content_for_partners(partners)
+                content = http.request.env['remote.phonebook'].get_content_for_supplier(partners, kw['tokken'])
             else:
-                content = http.request.env['remote.phonebook'].get_content_for_supplier(partners)
+                content = http.request.env['remote.phonebook'].get_content_for_partners(partners, kw['tokken'])
             response = http.request.make_response(
                 content,
                 headers=[('Content-Type', 'text/xml')])
             return response
 
-    @http.route('/aastra/phonebook/supplier', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/suppliers', auth='public')
     def get_supplier_by_id(self, **kw):
-        if 'id' not in kw:
+        if 'ids' not in kw:
             return "Invalid ID"
+        if 'tokken' not in kw:
+            return "invalid tokken"
         else:
-            partner_list = urllib.unquote(kw['id'].strip('[],').replace(",", "")).decode('utf8').split()
+            partner_list = urllib.unquote(kw['ids'].strip('[],').replace(",", "")).decode('utf8').split()
             cleaned_partner_list = map(int, partner_list)
             partners = http.request.env['res.partner'].sudo().browse(cleaned_partner_list)
-            content = http.request.env['remote.phonebook'].get_content_for_supplier(partners)
+            content = http.request.env['remote.phonebook'].get_content_for_supplier(partners, kw['tokken'])
             response = http.request.make_response(
                 content,
                 headers=[('Content-Type', 'text/xml')])
             return response
 
-    @http.route('/aastra/phonebook/<type>/<tokken>', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>', auth='public')
     def index(self, **kw):
         _logger.debug("got %r", kw)
         if 'tokken' not in kw:
@@ -94,12 +98,12 @@ class AastraPhonebook(http.Controller):
         response = http.request.make_response(rpb._get_content_aastra(kw['type']), headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/<type>/new_entry/1', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>/new_entry/1', auth='public')
     def new_entry(self, **kw):
         if 'type' not in kw:
             return "Invalid type"
         root = ET.Element('AastraIPPhoneInputScreen')
-        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
+        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % kw['tokken']
         root.set('cancelAction', cancel_action)
         title = ET.SubElement(root, 'Title')
         title.text = "Neuer Kontakt"
@@ -108,18 +112,18 @@ class AastraPhonebook(http.Controller):
         parameter = ET.SubElement(root, 'Parameter')
         parameter.text = "name"
         url = ET.SubElement(root, 'URL')
-        url.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/new_entry/2" % kw['type']
+        url.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/new_entry/2" % (kw['tokken'], kw['type'])
         response = http.request.make_response(
             ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes"),
             headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/<type>/new_entry/2', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>/new_entry/2', auth='public')
     def new_entry_number(self, **kw):
         if 'type' not in kw:
             return "Invalid type"
         root = ET.Element('AastraIPPhoneInputScreen')
-        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/new_entry/1" % kw['type']
+        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/new_entry/1" % (kw['tokken'], kw['type'])
         root.set('cancelAction', cancel_action)
         title = ET.SubElement(root, 'Title')
         title.text = kw['name']
@@ -135,12 +139,14 @@ class AastraPhonebook(http.Controller):
             headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/<type>/new_entry/create/<name>', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>/new_entry/create/<name>', auth='public')
     def new_entry_create(self, **kw):
         if 'type' not in kw:
             return "Invalid type"
         if 'name' not in kw:
             return "Invalid name"
+        if 'tokken' not in kw:
+            return "Invalid tokken"
         vals = {
             'name': kw['name'],
             'phone': kw['number'],
@@ -150,12 +156,12 @@ class AastraPhonebook(http.Controller):
         else:
             vals['customer'] = True
         http.request.env['res.partner'].sudo().create(vals)
-        return redirect("/aastra/phonebook/test")
+        return redirect("/aastra/phonebook/%s" % kw['tokken'])
 
-    @http.route('/aastra/phonebook/<type>/search_screen', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>/search_screen', auth='public')
     def search_screen(self, **kw):
         root = ET.Element('AastraIPPhoneInputScreen')
-        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
+        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % kw['tokken']
         root.set('cancelAction', cancel_action)
         title = ET.SubElement(root, 'Title')
         title.text = "Suche"
@@ -165,19 +171,26 @@ class AastraPhonebook(http.Controller):
         parameter.text = "search"
         url = ET.SubElement(root, 'URL')
         url.text = http.request.env['ir.config_parameter'].get_param(
-            'web.base.url') + "/aastra/phonebook/%s/search" % kw['type']
+            'web.base.url') + "/aastra/phonebook/%s/%s/search" % (kw['tokken'], kw['type'])
         response = http.request.make_response(
             ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes"),
             headers=[('Content-Type', 'text/xml')])
         return response
 
-    @http.route('/aastra/phonebook/<type>/search', auth='public')
+    @http.route('/aastra/phonebook/<tokken>/<type>/search', auth='public')
     def search(self, **kw):
         if 'search' not in kw:
             return "Invalid search parameter"
-        persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'])])
+        if 'tokken' not in kw:
+            return "Invalid tokken"
+        if kw['type'] == 'supplier':
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']), ('supplier', '=', True)])
+        elif kw['type'] == 'customers':
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']), ('customer', '=', True)])
+        else:
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'])])
         root = ET.Element('AastraIPPhoneTextMenu')
-        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % "test"
+        cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % kw['tokken']
         root.set('cancelAction', cancel_action)
         # root.set('wrap', 'no')
         title = ET.SubElement(root, 'Title')
@@ -186,12 +199,12 @@ class AastraPhonebook(http.Controller):
         name = ET.SubElement(new, 'Prompt')
         name.text = "Neuer Eintrag"
         uri = ET.SubElement(new, 'URI')
-        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/new_entry/1" % kw['type']
+        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/new_entry/1" % (kw['tokken'], kw['type'])
         new = ET.SubElement(root, 'MenuItem')
         name = ET.SubElement(new, 'Prompt')
         name.text = "Suche"
         uri = ET.SubElement(new, 'URI')
-        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/search_screen" % kw['type']
+        uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/search_screen" % (kw['tokken'], kw['type'])
         for partner in persons:
             if partner.phone:
                 entry = ET.SubElement(root, 'MenuItem')

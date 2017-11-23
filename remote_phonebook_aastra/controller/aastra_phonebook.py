@@ -183,12 +183,24 @@ class AastraPhonebook(http.Controller):
             return "Invalid search parameter"
         if 'tokken' not in kw:
             return "Invalid tokken"
+        # search persons starting with search string
         if kw['type'] == 'supplier':
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']), ('supplier', '=', True)])
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%'), ('supplier', '=', True)])
         elif kw['type'] == 'customers':
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']), ('customer', '=', True)])
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%'), ('customer', '=', True)])
         else:
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'])])
+            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%')])
+        # we got few entries, lets append some more by searching any occurence of the search string
+        if len(persons) < 5:
+            # | operator on recordsets means union
+            if kw['type'] == 'supplier':
+                persons | http.request.env['res.partner'].sudo().search(
+                    [('name', 'ilike', kw['search'] + '%'), ('supplier', '=', True)])
+            elif kw['type'] == 'customers':
+                persons | http.request.env['res.partner'].sudo().search(
+                    [('name', 'ilike', kw['search'] + '%'), ('customer', '=', True)])
+            else:
+                persons | http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'] + '%')])
         root = ET.Element('AastraIPPhoneTextMenu')
         cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % kw['tokken']
         root.set('cancelAction', cancel_action)

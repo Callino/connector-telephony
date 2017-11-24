@@ -185,22 +185,24 @@ class AastraPhonebook(http.Controller):
             return "Invalid tokken"
         # search persons starting with search string
         if kw['type'] == 'supplier':
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%'), ('supplier', '=', True)])
+            persons = http.request.env['res.partner'].sudo().search([('name', '=ilike', kw['search']+'%'), ('supplier', '=', True)])
         elif kw['type'] == 'customers':
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%'), ('customer', '=', True)])
+            persons = http.request.env['res.partner'].sudo().search([('name', '=ilike', kw['search']+'%'), ('customer', '=', True)])
         else:
-            persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search']+'%')])
+            persons = http.request.env['res.partner'].sudo().search([('name', '=ilike', kw['search']+'%')])
         # we got few entries, lets append some more by searching any occurence of the search string
+        additional_persons = []
         if len(persons) < 5:
-            # | operator on recordsets means union
+            # split into 2 lists so odoo default sorting is not an issue
             if kw['type'] == 'supplier':
-                persons | http.request.env['res.partner'].sudo().search(
-                    [('name', 'ilike', kw['search'] + '%'), ('supplier', '=', True)])
+                additional_persons = http.request.env['res.partner'].sudo().search(
+                    [('name', 'ilike', kw['search']), ('supplier', '=', True)])
             elif kw['type'] == 'customers':
-                persons | http.request.env['res.partner'].sudo().search(
-                    [('name', 'ilike', kw['search'] + '%'), ('customer', '=', True)])
+                additional_persons = http.request.env['res.partner'].sudo().search(
+                    [('name', 'ilike', kw['search']), ('customer', '=', True)])
             else:
-                persons | http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'] + '%')])
+                additional_persons = http.request.env['res.partner'].sudo().search([('name', 'ilike', kw['search'])])
+            additional_persons = additional_persons - persons
         root = ET.Element('AastraIPPhoneTextMenu')
         cancel_action = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s" % kw['tokken']
         root.set('cancelAction', cancel_action)
@@ -217,7 +219,28 @@ class AastraPhonebook(http.Controller):
         name.text = "Suche"
         uri = ET.SubElement(new, 'URI')
         uri.text = http.request.env['ir.config_parameter'].get_param('web.base.url') + "/aastra/phonebook/%s/%s/search_screen" % (kw['tokken'], kw['type'])
+        # append main entries first so they are on top
         for partner in persons:
+            _logger.debug("Partner Name: %r", partner.name)
+            if partner.phone:
+                entry = ET.SubElement(root, 'MenuItem')
+                name = ET.SubElement(entry, 'Prompt')
+                name.text = partner.name
+                uri = ET.SubElement(entry, 'URI')
+                uri.text = "Dial: %s" % partner.phone
+                dial = ET.SubElement(entry, 'Dial')
+                dial.text = partner.phone
+            if partner.mobile:
+                entry = ET.SubElement(root, 'MenuItem')
+                name = ET.SubElement(entry, 'Prompt')
+                name.text = partner.name
+                uri = ET.SubElement(entry, 'URI')
+                uri.text = "Dial: %s" % partner.mobile
+                dial = ET.SubElement(entry, 'Dial')
+                dial.text = partner.mobile
+        # add the others if the correct one is not on top
+        for partner in additional_persons:
+            _logger.debug(" Additional Partner Name: %r", partner.name)
             if partner.phone:
                 entry = ET.SubElement(root, 'MenuItem')
                 name = ET.SubElement(entry, 'Prompt')

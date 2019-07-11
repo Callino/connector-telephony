@@ -43,22 +43,25 @@ class remote_phonebook(models.Model):
         root = self._get_AastraIPPhoneTextMenu_root(tokken, type, cancel_action=cancel_action)
         # create simple entries to call contacts
         for partner in partners:
-            if partner.phone:
-                entry = ET.SubElement(root, 'MenuItem')
-                name = ET.SubElement(entry, 'Prompt')
-                name.text = partner.name
-                uri = ET.SubElement(entry, 'URI')
-                uri.text = "Dial: %s" % partner.phone
-                dial = ET.SubElement(entry, 'Dial')
-                dial.text = partner.phone
-            if partner.mobile:
-                entry = ET.SubElement(root, 'MenuItem')
-                name = ET.SubElement(entry, 'Prompt')
-                name.text = partner.name
-                uri = ET.SubElement(entry, 'URI')
-                uri.text = "Dial: %s" % partner.mobile
-                dial = ET.SubElement(entry, 'Dial')
-                dial.text = partner.mobile
+            try:
+                if partner.phone:
+                    entry = ET.SubElement(root, 'MenuItem')
+                    name = ET.SubElement(entry, 'Prompt')
+                    name.text = partner.name
+                    uri = ET.SubElement(entry, 'URI')
+                    uri.text = "Dial: %s" % partner.phone
+                    dial = ET.SubElement(entry, 'Dial')
+                    dial.text = partner.phone
+                if partner.mobile:
+                    entry = ET.SubElement(root, 'MenuItem')
+                    name = ET.SubElement(entry, 'Prompt')
+                    name.text = partner.name
+                    uri = ET.SubElement(entry, 'URI')
+                    uri.text = "Dial: %s" % partner.mobile
+                    dial = ET.SubElement(entry, 'Dial')
+                    dial.text = partner.mobile
+            except:
+                _logger.error("There was an error working on a partner record")
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model

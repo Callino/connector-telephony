@@ -41,6 +41,50 @@ class AastraPhonebook(http.Controller):
                                               headers=[('Content-Type', 'text/xml')])
         return response
 
+    @http.route('/aastra/phonebook/<tokken>/partners/<type>/<letter>', auth='public')
+    def get_phonebook_by_letter(self, **kw):
+        if 'letter' not in kw:
+            return "Invalid Letter"
+        if 'type' not in kw:
+            return "Invalid Type"
+        if 'tokken' not in kw:
+            return "invalid tokken"
+        else:
+            if kw['type'] == 'supplier':
+                ids_sql = "select id from res_partner as p1 where active and parent_id is null and supplier and not customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) and substring(upper(name) from 1 for 1) = '%s';" % \
+                          kw['letter']
+                http.request.cr.execute(ids_sql)
+                ids_result = http.request._cr.fetchall()
+                id_list = []
+                for result in ids_result:
+                    id_list.append(result[0])
+                partners = http.request.env['res.partner'].sudo().browse(id_list)
+                content = http.request.env['remote.phonebook'].get_content_for_supplier(partners, kw['tokken'])
+            elif kw['type'] == 'customers':
+                ids_sql = "select id from res_partner as p1 where active and parent_id is null and customer and not supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) and substring(upper(name) from 1 for 1) = '%s';" % \
+                          kw['letter']
+                http.request.cr.execute(ids_sql)
+                ids_result = http.request._cr.fetchall()
+                id_list = []
+                for result in ids_result:
+                    id_list.append(result[0])
+                partners = http.request.env['res.partner'].sudo().browse(id_list)
+                content = http.request.env['remote.phonebook'].get_content_for_partners(partners, kw['tokken'])
+            else:
+                ids_sql = "select id from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) and substring(upper(name) from 1 for 1) = '%s';" % \
+                          kw['letter']
+                http.request.cr.execute(ids_sql)
+                ids_result = http.request._cr.fetchall()
+                id_list = []
+                for result in ids_result:
+                    id_list.append(result[0])
+                partners = http.request.env['res.partner'].sudo().browse(id_list)
+                content = http.request.env['remote.phonebook'].get_content_for_partners(partners, kw['tokken'])
+            response = http.request.make_response(
+                content,
+                headers=[('Content-Type', 'text/xml')])
+            return response
+
     @http.route('/aastra/phonebook/<tokken>/partners/<type>', auth='public')
     def get_phonebook_by_ids(self, **kw):
         if 'ids' not in kw:

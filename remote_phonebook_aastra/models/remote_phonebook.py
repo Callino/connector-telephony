@@ -85,21 +85,20 @@ class remote_phonebook(models.Model):
         for letter, partners in collections.OrderedDict(sorted(partner_dict.items(), key=lambda t: t[0])).iteritems():
             entry = ET.SubElement(root, 'MenuItem')
             name = ET.SubElement(entry, 'Prompt')
-            name.text = letter
+            name.text = "%s - %i Kontakte" % (letter, partners[0])
             uri = ET.SubElement(entry, 'URI')
             if type == 'supplier':
                 uri.text = self.env['ir.config_parameter'].get_param(
-                    'web.base.url') + "/aastra/phonebook/%s/suppliers/?%s" % (tokken, urllib.urlencode({'ids': str(partners)}))
+                    'web.base.url') + "/aastra/phonebook/%s/partners/%s/%s" % (tokken, type, letter)
             else:
                 uri.text = self.env['ir.config_parameter'].get_param(
-                    'web.base.url') + "/aastra/phonebook/%s/partners/%s/?%s" % (tokken, type, urllib.urlencode({'ids': str(partners)}))
+                    'web.base.url') + "/aastra/phonebook/%s/partners/%s/%s" % (tokken, type, letter)
         return ET.tostring(root, xml_declaration=True, encoding='UTF-8', standalone="yes")
 
     @api.model
     def get_content_aastra_supplier(self):
-        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
+        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and supplier and not customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
         split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
-        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
         self._cr.execute(count_sql)
         count_result = self._cr.fetchall()[0]
         if count_result > 25:
@@ -108,10 +107,8 @@ class remote_phonebook(models.Model):
             split_result = self._cr.fetchall()
             for line in split_result:
                 split_partners[line[0]] = []
-            self._cr.execute(ids_sql)
-            ids_result = self._cr.fetchall()
-            for line in ids_result:
-                split_partners[line[1]].append(line[0])
+            for line in split_result:
+                split_partners[line[0]].append(line[1])
             return self.letter_screen(split_partners, "supplier", self.tokken)
         else:
             partners = self._get_sellers()
@@ -119,9 +116,8 @@ class remote_phonebook(models.Model):
 
     @api.model
     def get_content_aastra_customers(self):
-        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
-        split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
-        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
+        count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and customer and not supplier and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
+        split_sql = "select substring(upper(name) from 1 for 1), count(id) from res_partner as p1 where active and parent_id is null and customer and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
         self._cr.execute(count_sql)
         count_result = self._cr.fetchall()[0]
         if count_result > 25:
@@ -130,10 +126,8 @@ class remote_phonebook(models.Model):
             split_result = self._cr.fetchall()
             for line in split_result:
                 split_partners[line[0]] = []
-            self._cr.execute(ids_sql)
-            ids_result = self._cr.fetchall()
-            for line in ids_result:
-                split_partners[line[1]].append(line[0])
+            for line in split_result:
+                split_partners[line[0]].append(line[1])
             return self.letter_screen(split_partners, "customers", self.tokken)
         else:
             partners = self._get_customers()
@@ -143,7 +137,6 @@ class remote_phonebook(models.Model):
     def get_content_aastra_all(self):
         count_sql = "select count(*) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0)"
         split_sql = "select substring(upper(name) from 1 for 1), count(*) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1) order by substring(upper(name) from 1 for 1);"
-        ids_sql = "select id, substring(upper(name) from 1 for 1) from res_partner as p1 where active and parent_id is null and (phone is not null or mobile is not null or (SELECT count(*) from res_partner WHERE parent_id=p1.id AND (phone is not null or mobile is not null) )>0) group by substring(upper(name) from 1 for 1), id order by substring(upper(name) from 1 for 1);"
         self._cr.execute(count_sql)
         count_result = self._cr.fetchall()[0]
         if count_result > 25:
@@ -152,10 +145,8 @@ class remote_phonebook(models.Model):
             split_result = self._cr.fetchall()
             for line in split_result:
                 split_partners[line[0]] = []
-            self._cr.execute(ids_sql)
-            ids_result = self._cr.fetchall()
-            for line in ids_result:
-                split_partners[line[1]].append(line[0])
+            for line in split_result:
+                split_partners[line[0]].append(line[1])
             return self.letter_screen(split_partners, "all", self.tokken)
         else:
             partners = self._get_partners()
